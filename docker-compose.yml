@@ -1,0 +1,58 @@
+version: "3.1"
+services:
+
+  meetings-db:
+    image: mariadb
+    container_name: meetings-db
+    restart: always
+    volumes:
+      - database:/var/lib/mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=123456
+      - MYSQL_DATABASE=meetings
+      - MYSQL_USER=root
+      - MYSQL_PASSWORD=123456
+
+  meetings-redis:
+    image: redis
+    container_name: meetings-redis
+    entrypoint: redis-server
+
+  meetings-nginx:
+    image: laraveldev/nginx
+    container_name: meetings-nginx
+    links:
+      - meetings-fpm
+    volumes:
+      - .:/application
+      - .docker/nginx/default-site.conf:/etc/nginx/conf.d/default.conf
+    ports:
+      - "8081:80"
+
+  meetings-fpm:
+    image: meetings-fpm
+    build: .
+    container_name: meetings-fpm
+    working_dir: /application
+    links:
+      - meetings-db
+      - meetings-redis
+    volumes:
+      - .:/application
+      - /application/vendor
+
+  meetings-angular:
+    image: meetings-angular
+    build: resources/frontend
+    container_name: meetings-angular
+    working_dir: /application
+    volumes:
+      - ./public:/public
+      - ./resources/views:/views
+      - ./resources/frontend:/application
+      - /application/node_modules
+    ports:
+      - "4200:4200"
+
+volumes:
+  database:
